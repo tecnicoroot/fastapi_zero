@@ -6,3 +6,6 @@
 **refactor:** reorganização de código sem mudar comportamento
 **test:** adição ou ajuste de testes
 **docs:** mudanças na documentação
+
+
+Aulas 1 ao 4 Completas
