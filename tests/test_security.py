@@ -1,5 +1,6 @@
 from http import HTTPStatus
 
+import pytest
 from jwt import decode
 
 from fastapi_zero.security import create_access_token
@@ -8,7 +9,8 @@ from fastapi_zero.settings import Settings
 settings = Settings()
 
 
-def test_jwt_token_creation():
+@pytest.mark.asyncio
+async def test_jwt_token_creation():
     data = {'teste': 'teste'}
 
     token = create_access_token(data)
@@ -21,7 +23,8 @@ def test_jwt_token_creation():
     assert 'exp' in decoded
 
 
-def test_jwt_invalid_token(client):
+@pytest.mark.asyncio
+async def test_jwt_invalid_token(client):
     response = client.delete(
         '/users/1', headers={'Authorization': 'Bearer invalid_token'}
     )
@@ -29,7 +32,8 @@ def test_jwt_invalid_token(client):
     assert response.json() == {'detail': 'Could not validate credentials'}
 
 
-def test_jwt_user_not_found(client):
+@pytest.mark.asyncio
+async def test_jwt_user_not_found(client):
     token = create_access_token(
         data={'sub': 'usuario.inexistente@example.com'}
     )
@@ -41,7 +45,8 @@ def test_jwt_user_not_found(client):
     assert response.json() == {'detail': 'Could not validate credentials'}
 
 
-def test_jwt_email_empty(client):
+@pytest.mark.asyncio
+async def test_jwt_email_empty(client):
     token = create_access_token(data={'sub': ''})
     response = client.delete(
         '/users/1',

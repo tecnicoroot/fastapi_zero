@@ -1,13 +1,15 @@
-from sqlalchemy.orm import Session
+import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_zero.database import get_session
 
 
-def test_get_session():
-    session_generator = get_session()
+@pytest.mark.asyncio
+async def test_get_session():
+    asession_generator = get_session()
 
-    session = next(session_generator)
+    session = await anext(asession_generator)
 
-    assert isinstance(session, Session)
+    assert isinstance(session, AsyncSession)
 
-    session_generator.close()
+    await asession_generator.aclose()
