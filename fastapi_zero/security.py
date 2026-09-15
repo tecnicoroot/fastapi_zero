@@ -1,14 +1,22 @@
 from datetime import datetime, timedelta
+from http import HTTPStatus
 from zoneinfo import ZoneInfo
 
-from jwt import encode
+from fastapi import Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
+from jwt import DecodeError, decode, encode
 from pwdlib import PasswordHash
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
+from fastapi_zero.database import get_session
+from fastapi_zero.models import User
+from fastapi_zero.settings import Settings
+
+settings = Settings()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='auth/token')
 pwd_context = PasswordHash.recommended()
-
-SECRET_KEY = '05b3cb9e11dbe8dddfb3a65b016e6a9ce0794567e46b9f88bab42d8a5f2da43b'
-ALGORITHM = 'HS256'
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
 def get_password_hash(password: str) -> str:
@@ -22,9 +30,39 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
     expire = datetime.now(tz=ZoneInfo('UTC')) + timedelta(
-        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
     to_encode.update({'exp': expire})
 
-    encode_jwt = encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encode_jwt = encode(
+        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
     return encode_jwt
+
+
+def get_current_user(
+    session: Session = Depends(get_session),
+    token: str = Depends(oauth2_scheme),
+):
+    credentials_exception = HTTPException(
+        status_code=HTTPStatus.UNAUTHORIZED,
+        detail='Could not validate credentials',
+        headers={'WWW-Authenticate': 'Bearer'},
+    )
+
+    try:
+        payload = decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        subject_email = payload.get('sub')
+
+    except DecodeError:
+        raise credentials_exception
+
+    if not subject_email:
+        raise credentials_exception
+
+    user = session.scalar(select(User).where(User.email == subject_email))
+    if not user:
+        raise credentials_exception
+    return user
